@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"html/template"
 	"letsgo/internal/models"
 	"log/slog"
 	"net/http"
@@ -12,14 +13,14 @@ import (
 )
 
 type application struct {
-	logger   *slog.Logger
-	snippets *models.SnippetModel
+	logger        *slog.Logger
+	snippets      *models.SnippetModel
+	templateCache map[string]*template.Template
 }
 
 func main() {
 	// Runtime configuration settings for the web server.
 	addr := flag.String("addr", "localhost:4000", "HTTP network address")
-
 	dsn := flag.String("dsn", "web:password@/snippetbox?parseTime=true", "MySQL data source name")
 	flag.Parse()
 
@@ -34,17 +35,23 @@ func main() {
 
 	defer db.Close()
 
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
 	// Dependencies for the handlers
 	app := &application{
-		logger:   logger,
-		snippets: &models.SnippetModel{DB: db},
+		logger:        logger,
+		snippets:      &models.SnippetModel{DB: db},
+		templateCache: templateCache,
 	}
 
 	// Run the web server
 	logger.Info("starting server on %s", slog.String("addr", "localhost:4000"))
 
 	err = http.ListenAndServe(*addr, app.routes())
-
 	logger.Error(err.Error())
 	os.Exit(1)
 }
