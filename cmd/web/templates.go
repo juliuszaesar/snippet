@@ -8,6 +8,7 @@ import (
 )
 
 type templateData struct {
+	Form        any
 	Snippet     models.Snippet
 	Snippets    []models.Snippet
 	CurrentYear int
