@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"html/template"
@@ -53,6 +54,8 @@ func main() {
 	sessionManager.Store = mysqlstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
 
+	sessionManager.Cookie.Secure = true
+
 	// Dependencies for the handlers
 	app := &application{
 		logger:         logger,
@@ -62,10 +65,33 @@ func main() {
 		sessionManager: sessionManager,
 	}
 
-	// Run the web server
-	logger.Info("starting server on %s", slog.String("addr", "localhost:4000"))
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		// CipherSuites will be ignored if TLS 1.3 is recognized, since they are considered safe
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
 
-	err = http.ListenAndServe(*addr, app.routes())
+	srv := &http.Server{
+		Addr:         *addr,
+		Handler:      app.routes(),
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		TLSConfig:    tlsConfig,
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	// Run the web server
+
+	logger.Info("starting server on %s", "addr", srv.Addr)
+
+	err = srv.ListenAndServeTLS("/opt/homebrew/Cellar/go/1.22.0/libexec/src/crypto/tls/cert.pem", "/opt/homebrew/Cellar/go/1.22.0/libexec/src/crypto/tls/key.pem")
 	logger.Error(err.Error())
 	os.Exit(1)
 }

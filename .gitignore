@@ -50,3 +50,4 @@ Desktop.ini
 # Ignore files related to Linux
 *~
 .#*
+tls/
