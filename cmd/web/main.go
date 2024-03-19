@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"flag"
+	"fmt"
 	"html/template"
 	"letsgo/internal/models"
 	"log/slog"
@@ -29,7 +30,8 @@ type application struct {
 func main() {
 	// Runtime configuration settings for the web server.
 	addr := flag.String("addr", "localhost:4000", "HTTP network address")
-	dsn := flag.String("dsn", "web:password@/snippetbox?parseTime=true", "MySQL data source name")
+	mysqlHost := os.Getenv("MYSQL_HOST")
+	dsn := flag.String("dsn", fmt.Sprintf("web:password@tcp(%s:3306)/snippetbox?parseTime=true", mysqlHost), "MySQL data source name")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
@@ -93,7 +95,7 @@ func main() {
 
 	logger.Info("starting server on %s", "addr", srv.Addr)
 
-	err = srv.ListenAndServeTLS("/opt/homebrew/Cellar/go/1.22.0/libexec/src/crypto/tls/cert.pem", "/opt/homebrew/Cellar/go/1.22.0/libexec/src/crypto/tls/key.pem")
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	logger.Error(err.Error())
 	os.Exit(1)
 }

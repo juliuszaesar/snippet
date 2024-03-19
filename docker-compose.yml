@@ -1,4 +1,4 @@
-version: "8.3"
+version: "3.8"
 
 services:
   mysql:
@@ -6,8 +6,21 @@ services:
     container_name: mysql_server
     environment:
       MYSQL_ROOT_PASSWORD: password
+      MYSQL_HOST: mysql_server
     ports:
       - "3306:3306"
     volumes:
       - ./data:/var/lib/mysql
     restart: always
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
+    ports:
+      - "8080:80"
+    links:
+      - mysql
+    restart: always
+
