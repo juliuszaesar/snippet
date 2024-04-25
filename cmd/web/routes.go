@@ -1,6 +1,7 @@
 package main
 
 import (
+	"letsgo/ui"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -14,11 +15,12 @@ func (app *application) routes() http.Handler {
 		app.notFound(w)
 	})
 
-	fileServer := http.FileServer(http.Dir("./ui/static"))
-	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
+	fileServer := http.FileServer(http.FS(ui.Files))
+
+	router.Handler(http.MethodGet, "/static/*filepath", fileServer)
 
 	// Unprotected routes
-	dynamic := alice.New(app.sessionManager.LoadAndSave)
+	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
 
 	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.home))
 	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.snippetView))
@@ -28,7 +30,6 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodPost, "/user/login", dynamic.ThenFunc(app.userLoginPost))
 
 	// Protected (authenticated only) routes
-
 	protected := dynamic.Append(app.requireAuthentication)
 
 	router.Handler(http.MethodGet, "/snippet/create", protected.ThenFunc(app.snippetCreate))
